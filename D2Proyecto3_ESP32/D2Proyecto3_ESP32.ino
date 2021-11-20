@@ -127,12 +127,6 @@ void loop() {
 
       //Se toman los datos
       SensorPulsimetro();
-
-      //Se escribe envian los datos obtenidos a la TivaC
-      Serial2.write(3);
-      Serial2.write(PPM);
-      Serial2.write(4);
-      Serial2.write(SPO2);
     }
 
     if(Estado == 2)
@@ -212,6 +206,7 @@ void SensorPulsimetro(void)
 
       else{ 
        Serial.println("Asegurate de haber colocado correctamente tu dedo en el sensor");
+       Serial2.write(5);
        X = 0;
         }
     }
@@ -222,12 +217,18 @@ void SensorPulsimetro(void)
   {   
     PPM = PPM/25;
     SPO2 = SPO2/25;
+    
     Serial.println("");
     Serial.print("Las pulsaciones por minuto son: ");
     Serial.println(PPM);    
     Serial.print("La saturacion de oxigeno es de: ");
     Serial.println(SPO2);
-
+      
+    //Se escribe envian los datos obtenidos a la TivaC
+    Serial2.write(3);
+    Serial2.write(PPM);
+    Serial2.write(4);
+    Serial2.write(SPO2);
     break;
    }
   }

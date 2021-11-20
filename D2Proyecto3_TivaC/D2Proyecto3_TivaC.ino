@@ -67,30 +67,33 @@ void LCD_Print(String text, int x, int y, int fontSize, int color, int backgroun
 void LCD_Bitmap(unsigned int x, unsigned int y, unsigned int width, unsigned int height, unsigned char bitmap[]);
 void LCD_Sprite(int x, int y, int width, int height, unsigned char bitmap[], int columns, int index, char flip, char offset);
 
-//Sprite
-extern uint8_t TomandoDato[];
-
 //******************************************************************************************
 //Variables globales
 //******************************************************************************************
+//Variables para el antirebote de los botones
 int X=0;
 int Y=0;
 int EstadoAnterior=0;
 int EstadoAnterior2=0;
 
+// Se guarda el valor de la saturación de oxigeno y pulsos por minuto
 int SPO2 = 0;
 int PPM = 0;
 
+int Datos = 0; // Variable para confirmar que se recibieron ambos datos
+
+//Los datos se convierten a string para imprimirlos en la pantalla TFT
 String Porcentaje = "";
 String Pulsos = "";
 
 //Tarjeta SD
 File archivo;
 
-//Pantalla
+//Pantalla TFT
 int DPINS[] = {PB_0, PB_1, PB_2, PB_3, PB_4, PB_5, PB_6, PB_7};
 extern uint8_t fondo[];
-
+extern uint8_t TomandoDato[];
+extern uint8_t ECG[];
 //***************************************************************************************************************************************
 // Inicialización
 //***************************************************************************************************************************************
@@ -129,8 +132,7 @@ void setup() {
 //***************************************************************************************************************************************
 // Loop Infinito
 //***************************************************************************************************************************************
-void loop() {  
-  
+void loop() {
 //Solicitar valor del peso
   int value = digitalRead(BtnSPI); 
   if((value == LOW)&&(EstadoAnterior==HIGH))
@@ -144,7 +146,9 @@ void loop() {
     for (int x = 0; x < 320 - 32; x++) {
       int anim2 = (x / 24) % 6;
       LCD_Sprite(110, 100, 100, 100, TomandoDato, 6, anim2, 0, 1);
-      delay(15); }
+      delay(10); 
+    }
+    FillRect(0, 0, 319, 239, 0x0000);
    }
    EstadoAnterior=value;
 
@@ -152,32 +156,45 @@ void loop() {
   if(Serial2.available()>0)
   {
     int DatoObtenido = Serial2.read();
-    //Serial.print(DatoObtenido);
+    Serial.print(DatoObtenido);
+    Serial.print(", ");
     if (DatoObtenido == 3)
     {
     Serial.print("PPM: ");
     PPM = Serial2.read();
     Serial.println(PPM);
+    
       }
+      
      if (DatoObtenido==4)
     {
     Serial.print("SPO2: ");
     SPO2 = Serial2.read();
     Serial.println(SPO2);
-      }
-      LCD_Clear(0x0000);
-      FillRect(0, 0, 319, 239, 0x0000); 
-      LCD_Print("PPM", 40, 65, 2, 0xFDC0, 0x0000);
-      LCD_Print("%SpO2", 180, 65, 2, 0xFDC0, 0x0000);
+    LCD_Clear(0x0000);
+    FillRect(0, 0, 319, 239, 0x0000); 
+    LCD_Print("PPM", 40, 65, 2, 0xFDC0, 0x0000);
+    LCD_Print("%SpO2", 180, 65, 2, 0xFDC0, 0x0000);
 
-      Pulsos =  String(PPM); 
-      Porcentaje = String(SPO2);
-      
-      LCD_Print(Pulsos, 40, 85, 2, 0xFDC0, 0x0000);
-      LCD_Print(Porcentaje, 200, 85, 2, 0xFDC0, 0x0000);
-      delay(5000);
-      FillRect(0, 0, 319, 239, 0x0000);
+    Pulsos =  String(PPM); 
+    Porcentaje = String(SPO2);
+    
+    LCD_Print(Pulsos, 50, 85, 2, 0xFDC0, 0x0000);
+    LCD_Print(Porcentaje, 200, 85, 2, 0xFDC0, 0x0000);
+    LCD_Bitmap(20, 120, 134, 100, ECG);
+    LCD_Bitmap(154, 120, 134, 100, ECG);
+    delay(2000);
+    FillRect(0, 0, 319, 239, 0x0000);
+      }
+
+      if (DatoObtenido == 5){
+    FillRect(0, 0, 319, 239, 0x0000); 
+    LCD_Print("Coloca correctamente", 30, 85, 2, 0xFDC0, 0x0000);
+    LCD_Print("el dedo en", 60, 105, 2, 0xFDC0, 0x0000);
+    LCD_Print("el sensor", 80, 125, 2, 0xFDC0, 0x0000);
+    FillRect(0, 0, 319, 239, 0x0000);
     }
+  }
     
 //Guardar el valor de peso
   int value2 = digitalRead(BtnSave);
@@ -231,7 +248,7 @@ void MemoriaSD(void)
     LCD_Print("Se han guardado", 40, 85, 2, 0xFDC0, 0x0000);
     LCD_Print("Exitosamente", 60, 105, 2, 0xFDC0, 0x0000);
     LCD_Print("los datos", 80, 125, 2, 0xFDC0, 0x0000);
-    delay(3000);
+    delay(2000);
     FillRect(0, 0, 319, 239, 0x0000);
   }
 
