@@ -22,9 +22,10 @@ MAX30105 particleSensor;
 //******************************************************************************************
 //Pines
 //******************************************************************************************
-#define PIN 13
-#define NUMPIXELS 1
+#define PIN 13 //Pin
+#define NUMPIXELS 1 //No. de neopixels
 
+//Comunicación UART
 #define TXD 17
 #define RXD 16
 
@@ -70,11 +71,11 @@ void setup() {
   Serial.begin(115200);
   Serial2.begin(115200); //Para la comunicación UART con la Tiva
 
-  //NeoPixel
+//NeoPixel
   pixels.begin();
   pixels.show();
   
-  //Sensor
+//Sensor
   pinMode(pulseLED, OUTPUT);
   pinMode(readLED, OUTPUT);
 
@@ -104,38 +105,44 @@ void loop() {
   {
     int DatoObtenido = Serial2.read();
     Serial.println("");
+
+//Para tomar datos
     if (DatoObtenido == 1)
     {
       Estado = 1;
       }
-
+      
+//Para guardar en memoria SD
     if (DatoObtenido ==2)
     {
       Estado = 2;
       }
-      
+//En estado 1, se ejecuta el sensor y se envian los datos a la Tiva      
     if(Estado == 1)
     { 
       //Se enciende en Rojo
       pixels.setPixelColor(0, 10, 0, 0);
       pixels.show();
-      delay(5000);
-      pixels.setPixelColor(0, 0, 0, 0);
-      pixels.show();
 
       Serial.println("Estado 1, Obteniendo datos");
 
       //Se toman los datos
-      SensorPulsimetro();
+      SensorPulsimetro(); 
+
+      //Se apaga el neopixel
+      pixels.setPixelColor(0, 0, 0, 0);
+      pixels.show();
     }
 
+//En estado 2, se pone el led Verde cuando la Tiva logra guardar los datos en la SD
     if(Estado == 2)
     { 
       Serial.println("Estado 2, Guardando datos en la SD");
-      pixels.setPixelColor(0, 0, 10, 0);
+      
+      pixels.setPixelColor(0, 0, 10, 0); //Se enciende En verde el neopixel
       pixels.show();
-      delay(5000);
-      pixels.setPixelColor(0, 0, 0, 0);
+      delay(5000); 
+      pixels.setPixelColor(0, 0, 0, 0); //Se apaga el neopixel
       pixels.show();
     }
   }
@@ -196,12 +203,8 @@ void SensorPulsimetro(void)
       {
       PPM = PPM+heartRate;
       SPO2 = SPO2+spo2;
-      /*Serial.print(F("HR="));
-      Serial.print(heartRate, DEC);
-      Serial.print(F(", SPO2="));
-      Serial.println(spo2, DEC);*/
-      Serial.print(" . ");      
-      X = 1;
+      Serial.print(". ");   
+      X = 1; //Para salir del While
       }
 
       else{ 
@@ -215,7 +218,7 @@ void SensorPulsimetro(void)
   
   if (X==1) //Al tomar 25 muestras iguales se sale del while. 
   {   
-    PPM = PPM/25;
+    PPM = PPM/25; //Se realiza un promedio de los datos obtenidos
     SPO2 = SPO2/25;
     
     Serial.println("");
@@ -224,7 +227,7 @@ void SensorPulsimetro(void)
     Serial.print("La saturacion de oxigeno es de: ");
     Serial.println(SPO2);
       
-    //Se escribe envian los datos obtenidos a la TivaC
+    //Se envian los datos obtenidos a la TivaC
     Serial2.write(3);
     Serial2.write(PPM);
     Serial2.write(4);
@@ -237,10 +240,3 @@ void SensorPulsimetro(void)
 //******************************************************************************************
 //Neopixel
 //******************************************************************************************
-void Neopixel(void)
-{
-  pixels.clear();
-  pixels.setPixelColor(0, pixels.Color(0, 10, 0));
-  pixels.show();
-  delay(DELAYVAL); 
-}
