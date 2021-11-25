@@ -22,7 +22,7 @@ MAX30105 particleSensor;
 //******************************************************************************************
 //Pines
 //******************************************************************************************
-#define PIN 13 //Pin
+#define PIN 27 //Pin
 #define NUMPIXELS 1 //No. de neopixels
 
 //Comunicación UART
@@ -61,7 +61,10 @@ byte pulseLED = 11; //Must be on PWM pin
 byte readLED = 13; //Blinks with each data read
 
 int Estado = 0;
-int X=0;
+int X = 0;
+int Error = 0;
+int Led = 0;
+
 int PPM = 0;
 int SPO2 = 0;
 //******************************************************************************************
@@ -71,16 +74,19 @@ void setup() {
   Serial.begin(115200);
   Serial2.begin(115200); //Para la comunicación UART con la Tiva
 
-//NeoPixel
+  //NeoPixel
   pixels.begin();
+  pixels.clear();
+  pixels.setBrightness(10);
   pixels.show();
   
-//Sensor
+
+  //Sensor
   pinMode(pulseLED, OUTPUT);
   pinMode(readLED, OUTPUT);
 
   // Initialize sensor
-  if (!particleSensor.begin(Wire, I2C_SPEED_FAST)) //Use default I2C port, 400kHz speed
+  if (!particleSensor.begin(Wire)) //Use default I2C port, 400kHz speed
   {
     Serial.println(F("MAX30105 was not found. Please check wiring/power."));
     while (1);
@@ -94,68 +100,72 @@ void setup() {
   int adcRange = 4096; //Options: 2048, 4096, 8192, 16384
 
   particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //Configure sensor with these settings
-  
+  pixels.setPixelColor(0, pixels.Color(100, 0, 0)); //Se enciende en azul el neopixel
+  pixels.show();
+  delay(1000);
 }
 
 //******************************************************************************************
 //Loop Principal
 //******************************************************************************************
 void loop() {
+  pixels.clear();
+  pixels.show();
+
   if (Serial2.available() > 0)
   {
     int DatoObtenido = Serial2.read();
     Serial.println("");
 
-//Para tomar datos
+    //Para tomar datos
     if (DatoObtenido == 1)
     {
       Estado = 1;
-      }
-      
-//Para guardar en memoria SD
-    if (DatoObtenido ==2)
+    }
+
+    //Para guardar en memoria SD
+    if (DatoObtenido == 2)
     {
       Estado = 2;
-      }
-//En estado 1, se ejecuta el sensor y se envian los datos a la Tiva      
-    if(Estado == 1)
-    { 
-      //Se enciende en Rojo
-      pixels.setPixelColor(0, 10, 0, 0);
-      pixels.show();
-
+    }
+    //En estado 1, se ejecuta el sensor y se envian los datos a la Tiva
+    if (Estado == 1)
+    {
       Serial.println("Estado 1, Obteniendo datos");
-
+      pixels.setPixelColor(0, pixels.Color(255, 250, 110)); //Se enciende en azul el neopixel
+      pixels.show();
       //Se toman los datos
-      SensorPulsimetro(); 
-
-      //Se apaga el neopixel
-      pixels.setPixelColor(0, 0, 0, 0);
-      pixels.show();
-    }
-
-//En estado 2, se pone el led Verde cuando la Tiva logra guardar los datos en la SD
-    if(Estado == 2)
-    { 
-      Serial.println("Estado 2, Guardando datos en la SD");
+      SensorPulsimetro();
       
-      pixels.setPixelColor(0, 0, 10, 0); //Se enciende En verde el neopixel
-      pixels.show();
-      delay(5000); 
-      pixels.setPixelColor(0, 0, 0, 0); //Se apaga el neopixel
-      pixels.show();
+      //Neopixel tras ejecutar el sensor
+      Estado = 0;
     }
+
+    //En estado 2, se pone el led Verde cuando la Tiva logra guardar los datos en la SD
+    if (Estado == 2)
+    {
+      Serial.println("Estado 2, Guardando datos en la SD");
+      //Pongo led en azul
+      pixels.setPixelColor(0, pixels.Color( 51, 156, 200)); //Se enciende el neopixel
+      pixels.show();
+      delay(2000);
+    }
+  }
+
+  if (Led == 1)
+  {
+
   }
 }
 
 //******************************************************************************************
 //Sensor
 //******************************************************************************************
-void SensorPulsimetro(void) 
+void SensorPulsimetro(void)
 {
   Serial.println("Calculando tu frecuencia cardiaca y SPO2");
   Serial.println("No levantes tu dedo hasta que el sensor te lo indique");
-  
+
   bufferLength = 100; //buffer length of 100 stores 4 seconds of samples running at 25sps
 
   //read the first 100 samples, and determine the signal range
@@ -167,17 +177,14 @@ void SensorPulsimetro(void)
     redBuffer[i] = particleSensor.getRed();
     irBuffer[i] = particleSensor.getIR();
     particleSensor.nextSample(); //We're finished with this sample so move to next sample
-    /*Serial.print(F("red="));
-    Serial.print(redBuffer[i], DEC);
-    Serial.print(F(", ir="));
-    Serial.println(irBuffer[i], DEC);*/
   }
 
   //calculate heart rate and SpO2 after first 100 samples (first 4 seconds of samples)
   maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
 
   //Continuously taking samples from MAX30102.  Heart rate and SpO2 are calculated every 1 second
-  while (1)
+  byte ciclo = 1;
+  while (ciclo == 1)
   {
     //dumping the first 25 sets of samples in the memory and shift the last 75 sets of samples to the top
     for (byte i = 25; i < 100; i++)
@@ -199,44 +206,67 @@ void SensorPulsimetro(void)
       particleSensor.nextSample(); //We're finished with this sample so move to next sample
 
       //send samples and calculation result to terminal program through UART
-      if ((validHeartRate == 1)&&(validSPO2 == 1))
+      if ((validHeartRate == 1) && (validSPO2 == 1))
       {
-      PPM = PPM+heartRate;
-      SPO2 = SPO2+spo2;
-      Serial.print(". ");   
-      X = 1; //Para salir del While
+        PPM = PPM + heartRate;
+        SPO2 = SPO2 + spo2;
+        Serial.print(". ");
+        X = 1; //Para salir del While
+        Error = 0;
       }
 
-      else{ 
-       Serial.println("Asegurate de haber colocado correctamente tu dedo en el sensor");
-       Serial2.write(5);
-       X = 0;
-        }
+      else {
+        Serial.print("x ");
+        X = 1;
+        Error = 1;
+      }
     }
     //After gathering 25 new samples recalculate HR and SP02
     maxim_heart_rate_and_oxygen_saturation(irBuffer, bufferLength, redBuffer, &spo2, &validSPO2, &heartRate, &validHeartRate);
-  
-  if (X==1) //Al tomar 25 muestras iguales se sale del while. 
-  {   
-    PPM = PPM/25; //Se realiza un promedio de los datos obtenidos
-    SPO2 = SPO2/25;
-    
-    Serial.println("");
-    Serial.print("Las pulsaciones por minuto son: ");
-    Serial.println(PPM);    
-    Serial.print("La saturacion de oxigeno es de: ");
-    Serial.println(SPO2);
-      
-    //Se envian los datos obtenidos a la TivaC
-    Serial2.write(3);
-    Serial2.write(PPM);
-    Serial2.write(4);
-    Serial2.write(SPO2);
-    break;
-   }
+
+    if (X == 1) //Al tomar 25 muestras iguales se sale del while.
+    {
+      if (Error == 1)
+      {
+        Serial.println("Asegurate de colocar bien el dedo en el sensor");
+        Serial2.write(5);
+        
+        //Neopixel se pone en rojo
+        pixels.clear();
+        pixels.show();
+        pixels.setPixelColor(0, pixels.Color(200, 51, 51)); //Se enciende en azul el neopixel
+        pixels.show();
+        delay(5000);
+        
+      }
+
+      if (Error == 0)
+      {
+        PPM = PPM / 25; //Se realiza un promedio de los datos obtenidos
+        SPO2 = SPO2 / 25;
+
+        Serial.println("");
+        Serial.print("Las pulsaciones por minuto son: ");
+        Serial.println(PPM);
+        Serial.print("La saturacion de oxigeno es de: ");
+        Serial.println(SPO2);
+
+        //Se envian los datos obtenidos a la TivaC
+        Serial2.write(3);
+        Serial2.write(PPM);
+        Serial2.write(4);
+        Serial2.write(SPO2);
+
+        //Neopixel se pone en verde
+        pixels.clear();
+        pixels.show();
+        pixels.setPixelColor(0, pixels.Color(0, 150, 0)); //Se enciende en azul el neopixel
+        pixels.show();
+        delay(5000);
+      }
+      ciclo = 0;
+      //Serial.println("Fin sensor");
+      //break;
+    }
   }
 }
-
-//******************************************************************************************
-//Neopixel
-//******************************************************************************************

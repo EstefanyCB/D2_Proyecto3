@@ -133,6 +133,7 @@ void setup() {
 // Loop Infinito
 //***************************************************************************************************************************************
 void loop() {
+
 //Solicitar valor del peso
   int value = digitalRead(BtnSPI); 
   if((value == LOW)&&(EstadoAnterior==HIGH))
@@ -156,8 +157,7 @@ void loop() {
   if(Serial2.available()>0)
   {
     int DatoObtenido = Serial2.read();
-    Serial.print(DatoObtenido);
-    Serial.print(", ");
+    
     if (DatoObtenido == 3)
     {
     Serial.print("PPM: ");
@@ -189,9 +189,11 @@ void loop() {
 
       if (DatoObtenido == 5){
     FillRect(0, 0, 319, 239, 0x0000); 
-    LCD_Print("Coloca correctamente", 30, 85, 2, 0xFDC0, 0x0000);
-    LCD_Print("el dedo en", 60, 105, 2, 0xFDC0, 0x0000);
-    LCD_Print("el sensor", 80, 125, 2, 0xFDC0, 0x0000);
+    LCD_Print("Vuelve a colocar a intentarlo", 30, 70, 1, 0xFDC0, 0x0000);
+    LCD_Print("No se logro realizar", 1, 85, 2, 0xF8E3, 0x0000);
+    LCD_Print("la medicion", 60, 105, 2, 0xF8E3, 0x0000);
+    LCD_Print("correctamente", 50, 125, 2, 0xF8E3, 0x0000);
+    delay(2000);
     FillRect(0, 0, 319, 239, 0x0000);
     }
   }
